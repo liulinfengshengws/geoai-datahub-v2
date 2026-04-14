@@ -47,20 +47,21 @@ Paperclip工作流引擎层 - 模块化工作流，插件式扩展
 
 ```
 openclaw-v2/
-├── frontend/          # 前端代码 (Vue 3 + TypeScript + Mapbox)
+├── frontend/          # 前端代码 (Vue 3 + TypeScript + Cesium)
 ├── backend/           # 后端代码 (FastAPI + PostgreSQL + PostGIS)
 ├── data/              # 测试数据、配置文件
 ├── docs/              # 项目文档
 ├── config/            # 环境配置
 ├── deploy/            # 部署配置 (Docker, Kubernetes)
-└── scripts/           # 开发工具脚本
+├── scripts/           # 开发工具脚本
+└── .github/           # GitHub Actions工作流
 ```
 
 ## 🚀 技术栈
 
 ### 前端技术栈
 - **框架**: Vue 3 + TypeScript + Vite
-- **地图**: Mapbox GL JS + Turf.js
+- **地图**: CesiumJS + 3D Tiles + GeoTIFF支持
 - **UI组件**: Element Plus + Tailwind CSS
 - **状态管理**: Pinia
 - **可视化**: Chart.js + D3.js
@@ -136,6 +137,10 @@ python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 python main.py
+
+# 每日进度报告 (自动)
+# GitHub Actions每天21:00自动生成进度报告
+# 查看报告: docs/daily-reports/ 目录
 ```
 
 ## 📄 文档索引
@@ -143,6 +148,10 @@ python main.py
 - [项目计划](/docs/PROJECT_PLAN.md) - 详细开发计划和时间表
 - [需求规格](/docs/REQUIREMENTS.md) - 功能需求和非功能需求
 - [架构设计](/docs/ARCHITECTURE.md) - 系统架构和技术选型
+- [Cesium分析](/docs/CESIUM_VS_MAPBOX_ANALYSIS.md) - 地图引擎技术选型
+- [GitHub配置](/docs/GITHUB_SETUP_GUIDE.md) - GitHub仓库和自动化配置
+- [项目状态](/docs/PROJECT_STATUS.md) - 实时项目状态监控
+- [每日报告](/docs/daily-reports/) - 每日进度报告存档
 - [API文档](/docs/API.md) - 接口规范和示例
 - [部署指南](/docs/DEPLOYMENT.md) - 环境部署和配置
 
@@ -161,6 +170,22 @@ python main.py
 - **需求分析**: 文档专家
 - **开发实现**: 开发专家
 - **技术研究**: 信息专家
+
+## 🔄 每日进度更新
+
+本项目采用自动化进度跟踪系统：
+
+### 自动更新机制
+1. **每日21:00**: GitHub Actions自动生成进度报告
+2. **报告内容**: 任务状态、代码变更、风险分析、下一步计划
+3. **输出形式**: Markdown报告 + GitHub Issue + 项目状态总览
+4. **透明协作**: 所有团队成员可实时查看项目进展
+
+### 查看进度
+- **实时状态**: [PROJECT_STATUS.md](/docs/PROJECT_STATUS.md)
+- **历史报告**: [daily-reports/](/docs/daily-reports/)
+- **GitHub Issues**: 每日自动创建审阅Issue
+- **Actions日志**: GitHub Actions运行记录
 
 ## 📋 许可证
 
