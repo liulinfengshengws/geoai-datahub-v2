@@ -1,0 +1,157 @@
+name: Daily Progress Update
+
+on:
+  schedule:
+    # 每天北京时间21:00执行 (13:00 UTC)
+    - cron: '0 13 * * *'
+  workflow_dispatch:  # 允许手动触发
+    inputs:
+      date:
+        description: '报告日期 (YYYY-MM-DD)'
+        required: false
+        default: ''
+
+jobs:
+  generate-progress-report:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # 获取所有历史记录用于变更分析
+    
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+    
+    - name: Install dependencies
+      run: |
+        pip install python-dateutil
+        
+    - name: Generate daily progress report
+      env:
+        REPORT_DATE: ${{ inputs.date || github.event.schedule }}
+      run: |
+        python scripts/generate_daily_report.py
+        
+    - name: Commit and push progress report
+      run: |
+        git config --local user.email "github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
+        git add docs/daily-reports/
+        git add docs/PROJECT_STATUS.md
+        # 检查是否有变更
+        if git diff --staged --quiet; then
+          echo "No changes to commit"
+        else
+          git commit -m "📊 Daily Progress Update $(date +'%Y-%m-%d')"
+          git push
+        fi
+        
+    - name: Create GitHub Issue for review
+      if: success()
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const date = new Date().toISOString().split('T')[0];
+          const reportPath = `docs/daily-reports/${date}.md`;
+          
+          try {
+            const reportContent = fs.readFileSync(reportPath, 'utf8');
+            
+            // 提取关键指标
+            const progressMatch = reportContent.match(/## 📊 今日进度指标[\s\S]*?##/);
+            const progressSection = progressMatch ? progressMatch[0] : '无进度数据';
+            
+            const risksMatch = reportContent.match(/## ⚠️ 风险与问题[\s\S]*?##/);
+            const risksSection = risksMatch ? risksMatch[0] : '无风险报告';
+            
+            const nextStepsMatch = reportContent.match(/## 🚀 下一步计划[\s\S]*?$/);
+            const nextStepsSection = nextStepsMatch ? nextStepsMatch[0] : '无下一步计划';
+            
+            // 创建Issue
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `📊 每日进度报告 - ${date}`,
+              body: `# 📊 GeoAI DataHub v2 每日进度报告 - ${date}
+              
+**报告生成时间**: ${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}
+**工作流运行**: [${context.runId}](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})
+
+---
+
+## 📋 报告概览
+
+完整报告请查看: [${date}.md](https://github.com/${context.repo.owner}/${context.repo.repo}/blob/main/docs/daily-reports/${date}.md)
+
+${progressSection}
+
+${risksSection}
+
+${nextStepsSection}
+
+---
+
+## 📊 项目状态总览
+
+最新项目状态: [PROJECT_STATUS.md](https://github.com/${context.repo.owner}/${context.repo.repo}/blob/main/docs/PROJECT_STATUS.md)
+
+---
+
+## 🔍 代码变更分析
+
+\`\`\`
+${process.env.GITHUB_SHA ? `最新提交: ${process.env.GITHUB_SHA.substring(0, 7)}` : '无提交信息'}
+\`\`\`
+
+查看完整提交历史: [提交记录](https://github.com/${context.repo.owner}/${context.repo.repo}/commits/main)
+
+---
+
+## 📝 操作建议
+
+1. 请审阅今日进度报告
+2. 关注高风险项目
+3. 确认下一步行动计划
+4. 如有问题，请在下方评论
+
+---
+
+*本报告由GitHub Actions自动生成，如有问题请查看工作流日志。*`,
+              labels: ['daily-report', 'progress-update']
+            });
+          } catch (error) {
+            console.error('Error creating issue:', error);
+            // 如果报告文件不存在，创建简单的Issue
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `📊 每日进度报告 - ${date}`,
+              body: `# 📊 GeoAI DataHub v2 每日进度报告 - ${date}
+              
+**报告生成时间**: ${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}
+**状态**: 无详细报告数据，请检查报告生成脚本
+
+今日未生成详细进度报告，请检查:
+1. 报告生成脚本是否正常工作
+2. 项目文件结构是否正确
+3. 是否有代码变更需要报告
+
+查看工作流运行: [${context.runId}](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`,
+              labels: ['daily-report', 'progress-update', 'needs-attention']
+            });
+          }
+    
+    - name: Send notification to Feishu (optional)
+      if: success()
+      env:
+        FEISHU_WEBHOOK_URL: ${{ secrets.FEISHU_WEBHOOK_URL }}
+      run: |
+        if [ -n "$FEISHU_WEBHOOK_URL" ]; then
+          python scripts/send_feishu_notification.py
+        else
+          echo "Feishu webhook URL not set, skipping notification"
+        fi
